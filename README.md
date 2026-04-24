@@ -1,6 +1,6 @@
 # pubmed-brief
 
-> A Claude skill that turns any biomedical question into a branded PDF literature brief in under 60 seconds.
+> A Claude skill that turns any biomedical question into a branded PDF literature brief in about 60–90 seconds.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-D97757)](https://docs.claude.com/en/docs/agents-and-tools/agent-skills)
@@ -147,7 +147,10 @@ pubmed-brief/
 │   └── example-endocrowns.pdf
 └── scripts/
     ├── search_articles.py    # PubMed + Europe PMC + Crossref pipeline (with input validation)
-    └── build_pdf.py          # Branded PDF generator (ReportLab, output-escaped)
+    ├── build_pdf.py          # Branded PDF generator (ReportLab, output-escaped)
+    └── fonts/                # Bundled DejaVu Sans (public domain) for Unicode coverage —
+                              # required for non-ASCII author names and Greek/math characters
+                              # common in biomedical abstracts (β, μ, α, ≤). See fonts/LICENSE.
 ```
 
 ## Contributing

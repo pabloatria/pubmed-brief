@@ -41,6 +41,8 @@ The skill depends on three well-maintained Python packages:
 - **reportlab** (PDF generation; mature library, used in many production systems)
 - **requests** (HTTP client; ubiquitous, audited)
 
+It also bundles the **DejaVu Sans** font family (TTF files in `scripts/fonts/`), which is public domain. This is needed because ReportLab's built-in Helvetica is WinAnsi-only and silently drops non-ASCII characters common in biomedical abstracts (Greek letters, math symbols, author names like *Revilla-León* or *Wójcik*). DejaVu's own license permissions are included in `scripts/fonts/LICENSE`.
+
 These are installed via `pip install` in `install.sh`. As of the last release of this skill, no known CVEs apply to these libraries (verified with `pip-audit`). You can re-verify at any time:
 
 ```bash
@@ -52,7 +54,7 @@ pip-audit -r <(echo -e "biopython\nreportlab\nrequests")
 
 If you discover a security issue in this skill, please report it privately by:
 
-1. Opening a [GitHub Security Advisory](https://github.com/<your-username>/pubmed-brief/security/advisories/new) (preferred), or
+1. Opening a [GitHub Security Advisory](https://github.com/pabloatria/pubmed-brief/security/advisories/new) (preferred), or
 2. Emailing the repository owner (see GitHub profile)
 
 Please do not open a public issue for security-sensitive matters. Expected response time: within 7 days for acknowledgment.

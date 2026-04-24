@@ -128,8 +128,8 @@ If `present_files` is available (sandbox/Claude.ai), call it with the PDF path. 
 
 ## Edge cases
 
-- **Email argument:** Both NCBI and Europe PMC require a contact email per their TOS. Default to `your-email@domain.com` (or whatever the user provides). NCBI/Europe PMC use this for rate limiting and contact, not authentication.
-- **Rate limits:** The script sleeps between calls to respect NCBI's 3 req/s limit. If you hit a 429, wait 10 seconds and retry once.
+- **Email argument:** Both NCBI and Europe PMC require a contact email per their TOS. Pass the user's real email via `--email` when you can. The script falls back to `anonymous@example.com` if unset but will warn, because NCBI aggressively rate-limits shared defaults.
+- **Rate limits:** The script sleeps between calls to respect NCBI's 3 req/s limit and automatically retries HTTP 429 / 5xx with jittered backoff. You do not need to add a retry loop on top.
 - **Non-English articles:** PubMed indexes translated titles. Summarize in the language of the user's original request, regardless of the article's original language.
 - **Preprints:** PubMed indexes some preprints (e.g., from medRxiv via NIH). If a result is flagged as a preprint, note it in the clinical_takeaway field so the user knows the evidence isn't peer-reviewed.
 - **Topics with no results:** If both sections come back empty, the search query is wrong. Try a broader version once before reporting failure.

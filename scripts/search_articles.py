@@ -12,14 +12,16 @@ Usage:
 """
 import argparse
 import json
+import random
 import re
 import sys
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Callable, Optional
 
 import requests
 from Bio import Entrez
+from urllib.error import HTTPError, URLError
 
 # ---------- Config ----------
 EUROPE_PMC_SEARCH = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
@@ -65,6 +67,37 @@ def log(msg: str):
     print(f"[search] {msg}", file=sys.stderr, flush=True)
 
 
+# ---------- Retry wrapper ----------
+# NCBI rate-limits bursts and occasionally returns 5xx during maintenance.
+# A couple of retries with jittered backoff dramatically reduce flakiness.
+def _with_retry(fn: Callable, *, attempts: int = 3, base_delay: float = 1.0,
+                label: str = "request"):
+    """Call fn() up to `attempts` times, retrying on transient network errors
+    (connection resets, timeouts, HTTP 429/5xx). Re-raises the last exception
+    on exhaustion so the caller can decide what to do.
+    """
+    last_err: Optional[BaseException] = None
+    for i in range(1, attempts + 1):
+        try:
+            return fn()
+        except HTTPError as e:
+            code = getattr(e, "code", None)
+            # Retry only on rate-limit or server-side errors.
+            if code not in (429, 500, 502, 503, 504):
+                raise
+            last_err = e
+            delay = base_delay * (2 ** (i - 1)) + random.uniform(0, 0.5)
+            log(f"{label} HTTP {code} (attempt {i}/{attempts}); backing off {delay:.1f}s")
+            time.sleep(delay)
+        except (URLError, requests.exceptions.RequestException, TimeoutError) as e:
+            last_err = e
+            delay = base_delay * (2 ** (i - 1)) + random.uniform(0, 0.5)
+            log(f"{label} transient error ({e.__class__.__name__}); retrying in {delay:.1f}s")
+            time.sleep(delay)
+    assert last_err is not None
+    raise last_err
+
+
 # ---------- PubMed search ----------
 def pubmed_search(query: str, retmax: int, sort: str, mindate: Optional[str] = None) -> list[str]:
     """Returns list of PMIDs. sort: 'relevance' or 'pub_date'."""
@@ -79,23 +112,60 @@ def pubmed_search(query: str, retmax: int, sort: str, mindate: Optional[str] = N
         params["mindate"] = mindate
         params["maxdate"] = datetime.now().strftime("%Y/%m/%d")
         params["datetype"] = "pdat"
-    handle = Entrez.esearch(**params)
-    record = Entrez.read(handle)
-    handle.close()
+
+    def _do_search():
+        handle = Entrez.esearch(**params)
+        try:
+            return Entrez.read(handle)
+        finally:
+            handle.close()
+
+    record = _with_retry(_do_search, label="esearch")
     time.sleep(RATE_DELAY)
     return record.get("IdList", [])
 
 
+def _efetch_parse(pmid_list: list[str]):
+    """One Entrez.efetch call + Entrez.read with retry. Returns the parsed
+    records dict, or raises."""
+    def _do():
+        handle = Entrez.efetch(
+            db="pubmed", id=",".join(pmid_list), rettype="xml", retmode="xml"
+        )
+        try:
+            return Entrez.read(handle)
+        finally:
+            handle.close()
+    return _with_retry(_do, label="efetch")
+
+
 def pubmed_fetch(pmids: list[str]) -> list[dict]:
-    """Fetch full metadata for a list of PMIDs."""
+    """Fetch full metadata for a list of PMIDs. If the batch response is
+    malformed XML, fall back to fetching each PMID individually so one bad
+    record does not destroy the whole batch."""
     if not pmids:
         return []
-    handle = Entrez.efetch(db="pubmed", id=",".join(pmids), rettype="xml", retmode="xml")
-    records = Entrez.read(handle)
-    handle.close()
-    time.sleep(RATE_DELAY)
+    articles: list[dict] = []
 
-    articles = []
+    try:
+        records = _efetch_parse(pmids)
+    except Exception as e:
+        log(f"batch efetch failed ({e.__class__.__name__}: {e}); "
+            f"falling back to per-PMID fetch for {len(pmids)} IDs")
+        for p in pmids:
+            try:
+                single = _efetch_parse([p])
+                for pa in single.get("PubmedArticle", []):
+                    try:
+                        articles.append(_parse_pubmed_record(pa))
+                    except Exception as ex:
+                        log(f"parse error for PMID {p}: {ex}")
+            except Exception as ex:
+                log(f"efetch failed for PMID {p}: {ex}")
+            time.sleep(RATE_DELAY)
+        return articles
+
+    time.sleep(RATE_DELAY)
     for pubmed_article in records.get("PubmedArticle", []):
         try:
             articles.append(_parse_pubmed_record(pubmed_article))
@@ -162,35 +232,60 @@ def _parse_pubmed_record(rec) -> dict:
         "citations": 0,
         "pubmed_url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
         "doi_url": f"https://doi.org/{doi}" if doi else "",
-        "pmc_url": f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmcid}/" if pmcid else "",
+        "pmc_url": f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/" if pmcid else "",
     }
+
+
+def _safe_json(resp: requests.Response, context: str) -> dict:
+    """Parse response JSON; on failure log status + body prefix and return {}.
+
+    Some proxies/CDNs return HTML error pages with 200 OK, which would
+    otherwise surface as an opaque JSONDecodeError.
+    """
+    try:
+        return resp.json()
+    except ValueError:
+        body = (resp.text or "")[:200].replace("\n", " ")
+        log(f"{context}: non-JSON response (status {resp.status_code}): {body!r}")
+        return {}
 
 
 # ---------- Europe PMC enrichment ----------
 def enrich_europe_pmc(article: dict, email: str) -> dict:
-    """Add citation count + PMCID + open-access full text when available."""
+    """Add citation count + PMCID + open-access full text when available.
+
+    Returns the article (mutated in place). Failures are logged and swallowed
+    so one slow/failed record does not abort the whole enrichment loop.
+    """
     pmid = article["pmid"]
     headers = {"User-Agent": USER_AGENT.format(email=email)}
     try:
-        r = requests.get(
-            EUROPE_PMC_SEARCH,
-            params={"query": f"EXT_ID:{pmid} AND SRC:MED", "format": "json", "resultType": "core"},
-            headers=headers,
-            timeout=REQUEST_TIMEOUT,
+        r = _with_retry(
+            lambda: requests.get(
+                EUROPE_PMC_SEARCH,
+                params={"query": f"EXT_ID:{pmid} AND SRC:MED", "format": "json",
+                        "resultType": "core"},
+                headers=headers, timeout=REQUEST_TIMEOUT,
+            ),
+            attempts=2, label=f"europepmc PMID {pmid}",
         )
         r.raise_for_status()
-        results = r.json().get("resultList", {}).get("result", [])
+        results = _safe_json(r, f"europepmc PMID {pmid}").get("resultList", {}).get("result", [])
         if results:
             res = results[0]
-            article["citations"] = int(res.get("citedByCount", 0) or 0)
+            try:
+                article["citations"] = int(res.get("citedByCount", 0) or 0)
+            except (TypeError, ValueError):
+                article["citations"] = 0
             if not article["pmcid"]:
                 pmcid_from_epmc = safe_pmcid(res.get("pmcid", ""))
                 if pmcid_from_epmc:
                     article["pmcid"] = pmcid_from_epmc
-                    article["pmc_url"] = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmcid_from_epmc}/"
+                    article["pmc_url"] = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid_from_epmc}/"
             # Fetch open-access full text if available
             if res.get("isOpenAccess") == "Y" and article["pmcid"]:
                 article["full_text"] = fetch_full_text(article["pmcid"], email)
+            article["_enriched"] = True
     except Exception as e:
         log(f"Europe PMC enrich failed for PMID {pmid}: {e}")
     return article
@@ -203,10 +298,12 @@ def fetch_full_text(pmcid: str, email: str) -> str:
         return ""
     headers = {"User-Agent": USER_AGENT.format(email=email)}
     try:
-        r = requests.get(
-            EUROPE_PMC_FULLTEXT.format(pmcid=pmcid),
-            headers=headers,
-            timeout=REQUEST_TIMEOUT,
+        r = _with_retry(
+            lambda: requests.get(
+                EUROPE_PMC_FULLTEXT.format(pmcid=pmcid),
+                headers=headers, timeout=REQUEST_TIMEOUT,
+            ),
+            attempts=2, label=f"fullText {pmcid}",
         )
         if r.status_code != 200:
             return ""
@@ -228,14 +325,19 @@ def enrich_crossref(article: dict, email: str) -> dict:
         return article
     headers = {"User-Agent": USER_AGENT.format(email=email)}
     try:
-        r = requests.get(
-            CROSSREF_WORKS.format(doi=doi),
-            headers=headers,
-            timeout=REQUEST_TIMEOUT,
+        r = _with_retry(
+            lambda: requests.get(
+                CROSSREF_WORKS.format(doi=doi),
+                headers=headers, timeout=REQUEST_TIMEOUT,
+            ),
+            attempts=2, label=f"crossref {doi}",
         )
         if r.status_code == 200:
-            msg = r.json().get("message", {})
-            article["citations"] = int(msg.get("is-referenced-by-count", 0))
+            msg = _safe_json(r, f"crossref {doi}").get("message", {})
+            try:
+                article["citations"] = int(msg.get("is-referenced-by-count", 0) or 0)
+            except (TypeError, ValueError):
+                pass
     except Exception as e:
         log(f"Crossref enrich failed for DOI {doi}: {e}")
     return article
@@ -263,14 +365,30 @@ def build_brief(query: str, per_section: int, email: str) -> dict:
     all_articles = pubmed_fetch(all_pmids)
     by_pmid = {a["pmid"]: a for a in all_articles}
 
-    # Enrich pool with citation counts
+    # Warn if fetch lost records.
+    requested = len(set(all_pmids))
+    dropped = requested - len(all_articles)
+    if dropped > 0:
+        log(f"WARNING: {dropped}/{requested} records failed to parse and were dropped")
+
+    # Enrich pool with citation counts. Track how many succeed so we can warn
+    # the caller when the "Most Cited" ranking might be biased by partial data.
     log("Enriching with Europe PMC (citations + full text)...")
+    enriched_ok = 0
     for i, art in enumerate(all_articles, 1):
         enrich_europe_pmc(art, email)
-        if art["citations"] == 0:
+        if art.pop("_enriched", False):
+            enriched_ok += 1
+        elif art["citations"] == 0:
             enrich_crossref(art, email)
         if i % 5 == 0:
             log(f"  enriched {i}/{len(all_articles)}")
+
+    total = max(len(all_articles), 1)
+    enrich_rate = enriched_ok / total
+    if enrich_rate < 0.75:
+        log(f"WARNING: only {enriched_ok}/{total} articles enriched from Europe PMC "
+            f"(likely network issue). 'Most Cited' ranking may be biased.")
 
     # Build sections
     recent = [by_pmid[p] for p in recent_pmids if p in by_pmid][:per_section]
@@ -296,6 +414,9 @@ def main():
 
     # Validate inputs before doing anything
     email = safe_email(args.email)
+    if email == "anonymous@example.com":
+        log("WARNING: using default --email. NCBI will rate-limit the shared "
+            "default; pass --email your@address to identify yourself per their TOS.")
     if args.per_section < 1 or args.per_section > 50:
         sys.exit("--per-section must be between 1 and 50")
     if not args.query.strip():

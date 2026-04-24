@@ -10,14 +10,26 @@ echo ""
 # Detect Python 3
 if ! command -v python3 &> /dev/null; then
     echo "✗ python3 not found."
-    echo "  Install with: brew install python3"
+    echo "  macOS:         brew install python3"
+    echo "  Debian/Ubuntu: sudo apt install python3"
     exit 1
 fi
 
 PY_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 echo "✓ python3 found: $PY_VERSION"
 
+# Detect pip — on minimal Linux images python3-pip is a separate package.
+if ! python3 -m pip --version &> /dev/null; then
+    echo "✗ pip not found for python3."
+    echo "  macOS:         python3 -m ensurepip --upgrade"
+    echo "  Debian/Ubuntu: sudo apt install python3-pip"
+    echo "  Fedora:        sudo dnf install python3-pip"
+    exit 1
+fi
+
 # Install dependencies. Try clean first; fall back to --break-system-packages for newer macOS Pythons.
+# On the fallback failure branch we intentionally do NOT suppress stderr so the
+# user sees the real reason (network, permissions, PEP 668 without the flag, etc.).
 echo ""
 echo "▸ Installing biopython, reportlab, requests..."
 if python3 -m pip install --quiet --upgrade biopython reportlab requests 2>/dev/null; then
@@ -25,7 +37,11 @@ if python3 -m pip install --quiet --upgrade biopython reportlab requests 2>/dev/
 elif python3 -m pip install --quiet --upgrade --break-system-packages biopython reportlab requests; then
     echo "✓ installed (used --break-system-packages for system Python)"
 else
-    echo "✗ install failed. Try a venv:"
+    echo "✗ install failed. Retrying with full output so you can see the error:"
+    python3 -m pip install --upgrade --break-system-packages biopython reportlab requests || true
+    echo ""
+    echo "  If the error above is about PEP 668 or an externally-managed environment,"
+    echo "  install into a venv instead:"
     echo "    python3 -m venv ~/.pubmed-brief-venv"
     echo "    source ~/.pubmed-brief-venv/bin/activate"
     echo "    pip install biopython reportlab requests"
