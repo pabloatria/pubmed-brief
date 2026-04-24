@@ -154,9 +154,13 @@ def draw_page_chrome(canv: canvas.Canvas, doc):
 
 
 # ---------- Helpers ----------
-def format_authors(authors: list[str], max_shown: int = 3) -> str:
+def format_authors(authors, max_shown: int = 3) -> str:
     if not authors:
         return "Authors not listed"
+    # Accept a pre-formatted string too (e.g. "Revilla-León M, Kois JC, et al.")
+    # to prevent character-by-character iteration when brief.json is hand-built.
+    if isinstance(authors, str):
+        return authors.strip() or "Authors not listed"
     if len(authors) <= max_shown:
         return ", ".join(authors)
     return ", ".join(authors[:max_shown]) + ", et al."
