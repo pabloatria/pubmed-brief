@@ -37,7 +37,7 @@ For any topic you give it, a multi-page PDF containing:
   - Clickable links to PubMed, DOI, and PMC full text (when open access)
 - **Clean printable layout** suitable for clinical or academic use
 
-See [`examples/example-curodont-p11-4.pdf`](./examples/example-curodont-p11-4.pdf) for a real output.
+See [`examples/example-endocrowns.pdf`](./examples/example-endocrowns.pdf) for a real output.
 
 ## Install (macOS / Linux)
 
@@ -144,7 +144,7 @@ pubmed-brief/
 ├── install.sh            # macOS/Linux dependency installer
 ├── preview.png           # PDF screenshot for README
 ├── examples/
-│   └── example-curodont-p11-4.pdf
+│   └── example-endocrowns.pdf
 └── scripts/
     ├── search_articles.py    # PubMed + Europe PMC + Crossref pipeline (with input validation)
     └── build_pdf.py          # Branded PDF generator (ReportLab, output-escaped)
