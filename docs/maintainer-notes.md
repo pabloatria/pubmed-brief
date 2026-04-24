@@ -9,12 +9,12 @@ they're self-hosting their own GPT, [`chatgpt/SETUP.md`](../chatgpt/SETUP.md).
 ## After publishing a new version of the ChatGPT Custom GPT
 
 1. Publish per [`chatgpt/SETUP.md` Step 5](../chatgpt/SETUP.md#step-5--optional-publish-to-the-gpt-store).
-2. Copy the assigned `https://chat.openai.com/g/g-XXXXXX-pubmed-brief` URL.
-3. Edit the main [README.md](../README.md) — replace the
-   `https://chat.openai.com/g/g-XXXXX-pubmed-brief` placeholder in the
-   "ChatGPT" section with the real URL, plus remove the *"(URL will be
-   filled in once the GPT is published to the store)"* note.
-4. Commit as `docs: link to published PubMed Brief Custom GPT`.
+2. Copy the assigned `https://chatgpt.com/g/g-<hash>-pubmed-brief` URL.
+3. Edit the main [README.md](../README.md) — replace the current URL in the
+   "Try in ChatGPT" badge, the 👉 callout, and the Install → ChatGPT section.
+4. Commit as `docs: update published PubMed Brief Custom GPT URL`.
+
+**Current live URL:** <https://chatgpt.com/g/g-69ebe5ed75408191a5055cc67d3c6c88-pubmed-brief>
 
 ## After a change to `scripts/build_pdf.py` or the bundled fonts
 

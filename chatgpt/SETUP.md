@@ -104,7 +104,7 @@ If you want others to find and use your GPT without setting their own up:
 
 1. Back in the **Configure** tab, click **Update** (top-right) → **Share**.
 2. Choose **Everyone**. This lists the GPT publicly in the GPT Store.
-3. OpenAI assigns a permanent URL of the form `https://chat.openai.com/g/g-XXXXXX-pubmed-brief`.
+3. OpenAI assigns a permanent URL of the form `https://chatgpt.com/g/g-<hash>-<slug>`.
 4. Before a GPT can be public, your ChatGPT profile needs a **verified builder name** — ChatGPT prompts you the first time.
 
 Public GPTs go through automated review (minutes, not days).

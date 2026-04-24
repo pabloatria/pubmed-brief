@@ -1,14 +1,17 @@
 # pubmed-brief
 
-> A Claude skill that turns any biomedical question into a branded PDF literature brief in about 60–90 seconds.
+> Turn any biomedical question into a branded PDF literature brief in 60–90 seconds. Works with **Claude** (installed skill) or **ChatGPT** (Custom GPT).
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Try in ChatGPT](https://img.shields.io/badge/Try%20in-ChatGPT-10A37F?logo=openai&logoColor=white)](https://chatgpt.com/g/g-69ebe5ed75408191a5055cc67d3c6c88-pubmed-brief)
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-D97757)](https://docs.claude.com/en/docs/agents-and-tools/agent-skills)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB.svg)](https://www.python.org/downloads/)
 [![Security](https://img.shields.io/badge/security-audited-success.svg)](./SECURITY.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/pulls)
 
-Ask Claude *"give me a literature brief on peri-implantitis"* and get back a multi-page PDF with the **5 most recent** and **5 most cited** peer-reviewed articles, each with a structured 4-part summary (Background / Methods / Results / Clinical Takeaway) and clickable links to PubMed, DOI, and PMC full text.
+### 👉 No setup? Open it in ChatGPT: **[chatgpt.com/g/g-69ebe5ed75408191a5055cc67d3c6c88-pubmed-brief](https://chatgpt.com/g/g-69ebe5ed75408191a5055cc67d3c6c88-pubmed-brief)**
+
+Requires ChatGPT Plus. Ask it anything like *"give me a literature brief on peri-implantitis"* and you'll get back a multi-page PDF with the **5 most recent** and **5 most cited** peer-reviewed articles, each with a structured 4-part summary (Background / Methods / Results / Clinical Takeaway) and clickable links to PubMed, DOI, and PMC full text.
 
 ![Preview of generated PDF](./preview-endocrowns.png)
 
@@ -61,9 +64,11 @@ The installer handles `biopython`, `reportlab`, and `requests` (with the `--brea
 ### ChatGPT (zero-install for end users)
 
 Use the published Custom GPT directly:
-**https://chat.openai.com/g/g-XXXXX-pubmed-brief** *(URL will be filled in once the GPT is published to the store)*
+**[chatgpt.com/g/g-69ebe5ed75408191a5055cc67d3c6c88-pubmed-brief](https://chatgpt.com/g/g-69ebe5ed75408191a5055cc67d3c6c88-pubmed-brief)**
 
-Or set up your own in ~10 minutes — full instructions in [**`chatgpt/SETUP.md`**](./chatgpt/SETUP.md). Requires ChatGPT Plus. Tradeoffs vs. the Claude skill (estimated vs. exact citation counts, abstract-only summaries) are documented there.
+Requires ChatGPT Plus. No download, no setup — click the link and ask a biomedical question. The GPT returns the same branded PDF.
+
+Prefer your own copy (branded differently, or as a backup)? Full self-hosting instructions in [**`chatgpt/SETUP.md`**](./chatgpt/SETUP.md) — ~10 minutes. Tradeoffs vs. the Claude skill (estimated vs. exact citation counts, abstract-only summaries) are documented there.
 
 ## Use it (Claude)
 
