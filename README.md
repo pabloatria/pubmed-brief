@@ -39,7 +39,11 @@ For any topic you give it, a multi-page PDF containing:
 
 See [`examples/example-endocrowns.pdf`](./examples/example-endocrowns.pdf) for a real output.
 
-## Install (macOS / Linux)
+## Install
+
+Pick your AI. Same PDF output, same brand, same articles.
+
+### Claude (recommended — richer data)
 
 **Requirements:** Python 3.10+ and Claude Code or Claude Desktop with skill support enabled.
 
@@ -52,9 +56,16 @@ cd ~/.claude/skills/pubmed-brief
 ./install.sh
 ```
 
-That's it. The installer handles `biopython`, `reportlab`, and `requests` (with the `--break-system-packages` workaround for newer macOS Pythons).
+The installer handles `biopython`, `reportlab`, and `requests` (with the `--break-system-packages` workaround for newer macOS Pythons).
 
-## Use it
+### ChatGPT (zero-install for end users)
+
+Use the published Custom GPT directly:
+**https://chat.openai.com/g/g-XXXXX-pubmed-brief** *(URL will be filled in once the GPT is published to the store)*
+
+Or set up your own in ~10 minutes — full instructions in [**`chatgpt/SETUP.md`**](./chatgpt/SETUP.md). Requires ChatGPT Plus. Tradeoffs vs. the Claude skill (estimated vs. exact citation counts, abstract-only summaries) are documented there.
+
+## Use it (Claude)
 
 In Claude Desktop or Claude Code, just ask naturally:
 
@@ -141,16 +152,23 @@ pubmed-brief/
 ├── README.md             # This file
 ├── LICENSE               # MIT
 ├── SECURITY.md           # Threat model, dependencies, vulnerability disclosure
-├── install.sh            # macOS/Linux dependency installer
+├── install.sh            # macOS/Linux dependency installer (Claude path)
 ├── preview-endocrowns.png # PDF screenshot for README
 ├── examples/
 │   └── example-endocrowns.pdf
-└── scripts/
-    ├── search_articles.py    # PubMed + Europe PMC + Crossref pipeline (with input validation)
-    ├── build_pdf.py          # Branded PDF generator (ReportLab, output-escaped)
+├── chatgpt/              # Custom GPT distribution (ChatGPT path)
+│   ├── SETUP.md          # Step-by-step setup for the ChatGPT Custom GPT
+│   ├── CUSTOM_GPT_INSTRUCTIONS.md   # Paste into the GPT's Instructions field
+│   └── openapi.yaml      # Paste into the GPT's Actions → Schema field
+├── docs/
+│   └── plans/            # Design docs and implementation plans
+└── scripts/              # Shared by both platforms
+    ├── search_articles.py    # PubMed + Europe PMC + Crossref pipeline (Claude-only)
+    ├── build_pdf.py          # Branded PDF generator (used on both platforms)
     └── fonts/                # Bundled DejaVu Sans (public domain) for Unicode coverage —
                               # required for non-ASCII author names and Greek/math characters
                               # common in biomedical abstracts (β, μ, α, ≤). See fonts/LICENSE.
+                              # ChatGPT users upload these alongside build_pdf.py to Knowledge.
 ```
 
 ## Contributing

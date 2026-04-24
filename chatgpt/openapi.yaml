@@ -1,0 +1,227 @@
+openapi: 3.1.0
+info:
+  title: PubMed Search via NCBI eutils
+  description: |
+    Search and retrieve metadata for biomedical literature from NCBI PubMed.
+    Wraps the public NCBI E-utilities API (esearch, esummary, efetch) so a
+    Custom GPT can find articles, fetch abstracts, and retrieve metadata
+    without an API key. Uses NCBI's allowed 3 requests/second rate.
+  version: 1.0.0
+servers:
+  - url: https://eutils.ncbi.nlm.nih.gov/entrez/eutils
+    description: NCBI E-utilities (no auth required)
+paths:
+  /esearch.fcgi:
+    get:
+      operationId: searchPubMed
+      summary: Search PubMed for articles matching a query
+      description: |
+        Returns a list of PubMed IDs (PMIDs) matching the search term.
+        Use sort=pub_date for most recent, sort=relevance for default ranking.
+        Combine with mindate/maxdate to limit by date range (YYYY/MM/DD format).
+      parameters:
+        - name: db
+          in: query
+          required: true
+          schema:
+            type: string
+            default: pubmed
+            enum: [pubmed]
+          description: Always 'pubmed'
+        - name: term
+          in: query
+          required: true
+          schema:
+            type: string
+          description: |
+            Search query. Use AND/OR operators and field tags like [Title]
+            or [MeSH]. Example: "zirconia veneers AND clinical[Title]"
+        - name: retmax
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: Number of PMIDs to return (1-100)
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [relevance, pub_date]
+            default: relevance
+          description: Sort order
+        - name: mindate
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Earliest publication date in YYYY/MM/DD or YYYY format
+        - name: maxdate
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Latest publication date in YYYY/MM/DD or YYYY format
+        - name: datetype
+          in: query
+          required: false
+          schema:
+            type: string
+            default: pdat
+            enum: [pdat, mdat, edat]
+          description: Date type for filtering (pdat = publication date)
+        - name: retmode
+          in: query
+          required: true
+          schema:
+            type: string
+            default: json
+            enum: [json]
+          description: Always 'json'
+        - name: tool
+          in: query
+          required: true
+          schema:
+            type: string
+            default: pubmed-brief-gpt
+          description: Identifier for this client (NCBI TOS requirement)
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            default: chatgpt-pubmed-brief@example.com
+          description: Contact email (NCBI TOS requirement)
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  esearchresult:
+                    type: object
+                    properties:
+                      count:
+                        type: string
+                        description: Total matches
+                      retmax:
+                        type: string
+                      retstart:
+                        type: string
+                      idlist:
+                        type: array
+                        items:
+                          type: string
+                        description: List of PMIDs
+  /esummary.fcgi:
+    get:
+      operationId: getArticleSummaries
+      summary: Get metadata summaries for one or more PMIDs
+      description: |
+        Returns title, authors, journal, year, DOI, and PMC ID for each PMID.
+        Use after searchPubMed to enrich the list of PMIDs with metadata.
+        Pass multiple PMIDs comma-separated in the id parameter.
+      parameters:
+        - name: db
+          in: query
+          required: true
+          schema:
+            type: string
+            default: pubmed
+            enum: [pubmed]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated PMIDs (e.g., "35486828,33264437")
+        - name: retmode
+          in: query
+          required: true
+          schema:
+            type: string
+            default: json
+            enum: [json]
+        - name: tool
+          in: query
+          required: true
+          schema:
+            type: string
+            default: pubmed-brief-gpt
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            default: chatgpt-pubmed-brief@example.com
+      responses:
+        '200':
+          description: Article metadata
+          content:
+            application/json:
+              schema:
+                type: object
+  /efetch.fcgi:
+    get:
+      operationId: getArticleAbstracts
+      summary: Get full abstracts for one or more PMIDs
+      description: |
+        Returns abstracts in XML format. Use after esummary when you need
+        the full abstract text for summarization. Pass multiple PMIDs
+        comma-separated in the id parameter. Returns XML which the GPT can
+        parse text content from.
+      parameters:
+        - name: db
+          in: query
+          required: true
+          schema:
+            type: string
+            default: pubmed
+            enum: [pubmed]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated PMIDs
+        - name: rettype
+          in: query
+          required: true
+          schema:
+            type: string
+            default: abstract
+            enum: [abstract, medline, xml]
+        - name: retmode
+          in: query
+          required: true
+          schema:
+            type: string
+            default: xml
+            enum: [xml, text]
+        - name: tool
+          in: query
+          required: true
+          schema:
+            type: string
+            default: pubmed-brief-gpt
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            default: chatgpt-pubmed-brief@example.com
+      responses:
+        '200':
+          description: Abstracts
+          content:
+            application/xml:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
