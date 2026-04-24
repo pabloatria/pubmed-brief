@@ -10,7 +10,7 @@
 
 Ask Claude *"give me a literature brief on peri-implantitis"* and get back a multi-page PDF with the **5 most recent** and **5 most cited** peer-reviewed articles, each with a structured 4-part summary (Background / Methods / Results / Clinical Takeaway) and clickable links to PubMed, DOI, and PMC full text.
 
-![Preview of generated PDF](./preview.png)
+![Preview of generated PDF](./preview-endocrowns.png)
 
 ---
 
@@ -142,7 +142,7 @@ pubmed-brief/
 ├── LICENSE               # MIT
 ├── SECURITY.md           # Threat model, dependencies, vulnerability disclosure
 ├── install.sh            # macOS/Linux dependency installer
-├── preview.png           # PDF screenshot for README
+├── preview-endocrowns.png # PDF screenshot for README
 ├── examples/
 │   └── example-endocrowns.pdf
 └── scripts/
