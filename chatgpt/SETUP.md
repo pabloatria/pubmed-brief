@@ -1,13 +1,17 @@
 # PubMed Brief — ChatGPT Custom GPT Setup
 
+**Audience:** you want to create your own Custom GPT version of PubMed Brief (either for personal use or to share with your own audience).
+
+**Not looking to set anything up?** If you just want to *use* PubMed Brief inside ChatGPT, use the published Custom GPT linked in the main [README](../README.md) — no setup required. This file is only for people who want their own copy.
+
+---
+
 This is the ChatGPT-compatible version of the `pubmed-brief` Claude skill. It produces the same branded PDF output (teal #0F4C5C / bronze #B08D57 / beige #F5EFE6) using the same `build_pdf.py` generator, running inside ChatGPT via a Custom GPT with one OpenAPI Action.
 
 **Time to set up:** ~10 minutes.
-**Cost:** $0 incremental — requires an existing ChatGPT Plus subscription ($20/mo), no additional fees.
+**Cost:** $0 incremental — requires an existing ChatGPT Plus subscription, no additional fees.
 
 ## Tradeoffs vs. the Claude skill
-
-Read this before you start so you know what you're signing up for.
 
 | Feature                         | Claude skill                    | ChatGPT Custom GPT                            |
 |---------------------------------|---------------------------------|------------------------------------------------|
@@ -19,9 +23,9 @@ Read this before you start so you know what you're signing up for.
 | PDF visual identity             | Identical                       | Identical (same `build_pdf.py`)                |
 | Ongoing maintenance             | `git pull` updates everything   | Manual re-upload when `build_pdf.py` changes   |
 
-If you need true citation counts and full-text access, the Claude version is materially better. If your audience is on ChatGPT, the Custom GPT is good enough for clinical literature scanning.
+If you need exact citation counts and full-text access, the Claude version is materially better. If your audience is on ChatGPT, the Custom GPT is good enough for clinical literature scanning.
 
-## What you get
+## What your GPT will do
 
 A Custom GPT named **PubMed Brief** that:
 
@@ -31,20 +35,22 @@ A Custom GPT named **PubMed Brief** that:
 4. Generates structured 4-part summaries (background / methods / results / clinical takeaway).
 5. Builds a branded PDF in Code Interpreter and delivers it as a downloadable file.
 
-## Setup
+## Files you need
 
-You need three files from this repo. Either clone the repo or download them individually:
+Either clone this repo or download these seven files individually:
 
-- [`scripts/build_pdf.py`](../scripts/build_pdf.py)
-- [`scripts/fonts/DejaVuSans.ttf`](../scripts/fonts/DejaVuSans.ttf)
-- [`scripts/fonts/DejaVuSans-Bold.ttf`](../scripts/fonts/DejaVuSans-Bold.ttf)
-- [`scripts/fonts/DejaVuSans-Oblique.ttf`](../scripts/fonts/DejaVuSans-Oblique.ttf)
-- [`scripts/fonts/DejaVuSans-BoldOblique.ttf`](../scripts/fonts/DejaVuSans-BoldOblique.ttf)
+**From `scripts/`:**
+- `build_pdf.py`
+- `fonts/DejaVuSans.ttf`
+- `fonts/DejaVuSans-Bold.ttf`
+- `fonts/DejaVuSans-Oblique.ttf`
+- `fonts/DejaVuSans-BoldOblique.ttf`
 
-And this folder's two text files:
-
+**From this `chatgpt/` folder:**
 - [`CUSTOM_GPT_INSTRUCTIONS.md`](./CUSTOM_GPT_INSTRUCTIONS.md) — paste into the GPT's Instructions field.
 - [`openapi.yaml`](./openapi.yaml) — paste into the GPT's Actions → Schema field.
+
+## Setup steps
 
 ### Step 1 — Create the Custom GPT
 
@@ -66,7 +72,7 @@ And this folder's two text files:
 
 ### Step 2 — Upload `build_pdf.py` + fonts to Knowledge
 
-In the same Configure tab, scroll to **Knowledge** → **Upload files**. Upload **all five** files:
+Scroll to **Knowledge** → **Upload files**. Upload **all five** files:
 
 1. `build_pdf.py`
 2. `DejaVuSans.ttf`
@@ -74,53 +80,43 @@ In the same Configure tab, scroll to **Knowledge** → **Upload files**. Upload 
 4. `DejaVuSans-Oblique.ttf`
 5. `DejaVuSans-BoldOblique.ttf`
 
-ChatGPT places all Knowledge files flat in `/mnt/data/`. `build_pdf.py`'s font loader probes that flat layout — Unicode author names like "Revilla-León" and Greek letters (β, μ, α) in abstracts will render correctly.
+ChatGPT places every Knowledge file flat in `/mnt/data/`. `build_pdf.py`'s font loader probes that layout — Unicode author names like "Revilla-León" and Greek letters (β, μ, α) in abstracts render correctly.
 
-If you skip the fonts, the PDF will still generate but non-ASCII characters degrade to blanks (the script prints a warning). Just upload them.
+If you skip the fonts, the PDF will still generate but non-ASCII characters degrade to blanks (the script prints a warning). Upload them.
 
 ### Step 3 — Add the PubMed Action
 
-1. In Configure, scroll to **Actions** → **Create new action**.
+1. Scroll to **Actions** → **Create new action**.
 2. Paste the entire contents of [`openapi.yaml`](./openapi.yaml) into the **Schema** field.
 3. **Authentication:** leave as **None** (NCBI E-utilities requires no auth).
 4. **Privacy policy URL:** `https://www.ncbi.nlm.nih.gov/home/about/policies/`
 5. Click **Test** on the `searchPubMed` operation with a query like `term=endocrowns&db=pubmed&retmode=json&retmax=5&tool=pubmed-brief-gpt&email=test@example.com`. You should see a list of PMIDs. If you see an error, check that the server URL in the schema is `https://eutils.ncbi.nlm.nih.gov/entrez/eutils`.
 
-### Step 4 — Save, test, then publish
+### Step 4 — Save and test
 
 1. Click **Update** / **Save**.
 2. Test it with a real query: *"What does the literature say about endocrowns?"* The GPT should: search PubMed → fetch metadata → fetch abstracts → write structured summaries → build the PDF → deliver the file.
 3. If anything fails, the most common issue is forgetting to upload one of the font files or typo'ing the Action schema paste.
 
-## Publish to the GPT Store
+### Step 5 — (Optional) Publish to the GPT Store
 
-To let anyone find and use your GPT:
+If you want others to find and use your GPT without setting their own up:
 
 1. Back in the **Configure** tab, click **Update** (top-right) → **Share**.
-2. Choose **Everyone**. This lists the GPT publicly in the GPT Store — users can find it by searching "PubMed Brief" or your name.
-3. OpenAI assigns a permanent URL of the form `https://chat.openai.com/g/g-XXXXXX-pubmed-brief`. Copy it.
-4. Before a GPT can be published publicly, your ChatGPT profile needs a **verified builder name** — ChatGPT prompts you the first time.
-5. Paste the assigned URL back in your repo's README so visitors can jump straight into the published GPT without setting their own up.
+2. Choose **Everyone**. This lists the GPT publicly in the GPT Store.
+3. OpenAI assigns a permanent URL of the form `https://chat.openai.com/g/g-XXXXXX-pubmed-brief`.
+4. Before a GPT can be public, your ChatGPT profile needs a **verified builder name** — ChatGPT prompts you the first time.
 
-Public GPTs go through an automated review (minutes, not days). OpenAI occasionally rejects GPTs whose instructions mention specific other platforms in unfavorable ways; the Instructions file here is clean on this front.
+Public GPTs go through automated review (minutes, not days).
 
-## Maintenance
+## Maintenance — when the upstream repo updates
 
-The single source of truth for `build_pdf.py` and the fonts lives in this repo. When the repo updates, the Custom GPT does not update automatically — you have to re-upload.
+The canonical `build_pdf.py` and fonts live in this repo. Your Custom GPT does **not** auto-update; when upstream changes you need to re-upload.
 
-When to re-upload:
-- **`build_pdf.py` changed** (check commits) → re-download from `scripts/build_pdf.py`, delete the old one in the GPT's Knowledge, upload the new one.
+Re-upload when:
+- **`scripts/build_pdf.py` changed** → re-download, delete the old file from your GPT's Knowledge, upload the new one.
 - **Font files changed** (rare) → same procedure.
-- **Custom GPT instructions changed** (i.e. this repo's `chatgpt/CUSTOM_GPT_INSTRUCTIONS.md` got edits) → re-paste the updated content into the GPT's Instructions.
-- **OpenAPI schema changed** (rare) → re-paste `chatgpt/openapi.yaml` into Actions → Schema.
+- **`chatgpt/CUSTOM_GPT_INSTRUCTIONS.md` changed** → re-paste the updated content into your GPT's Instructions.
+- **`chatgpt/openapi.yaml` changed** (rare) → re-paste into Actions → Schema.
 
-The fastest way to tell: `git log -- scripts/build_pdf.py chatgpt/` on the cloned repo shows everything that's changed since you last synced.
-
-## Promoting both versions
-
-When you send someone to this skill:
-
-- **Claude users** → `https://github.com/pabloatria/pubmed-brief` (install instructions in the main README).
-- **ChatGPT users** → the published GPT Store URL (once you've completed "Publish to the GPT Store" above).
-
-Same input, same PDF output, same brand. Audience on Claude gets richer citation/full-text data; audience on ChatGPT gets a zero-install experience.
+The fastest way to tell: `git log -- scripts/build_pdf.py chatgpt/` on the cloned repo shows everything that has changed since you last synced. Consider subscribing to the repo's GitHub releases for notifications.
