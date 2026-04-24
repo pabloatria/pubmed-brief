@@ -161,11 +161,30 @@ paths:
             default: chatgpt-pubmed-brief@example.com
       responses:
         '200':
-          description: Article metadata
+          description: |
+            Article metadata. Response shape is:
+            { "header": {...}, "result": { "uids": ["pmid1", ...],
+              "pmid1": {"uid":..., "title":..., "authors":[...],
+                        "fulljournalname":..., "pubdate":..., "elocationid":...,
+                        "articleids":[...]}, ... } }
           content:
             application/json:
               schema:
                 type: object
+                additionalProperties: true
+                properties:
+                  header:
+                    type: object
+                    additionalProperties: true
+                  result:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      uids:
+                        type: array
+                        items:
+                          type: string
+                        description: PMIDs returned, same order as requested
   /efetch.fcgi:
     get:
       operationId: getArticleAbstracts
