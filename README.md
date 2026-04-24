@@ -61,8 +61,8 @@ In Claude Desktop or Claude Code, just ask naturally:
 ```
 "Give me a literature brief on guided implant explantation"
 "What does the literature say about MODJAW and digital occlusion?"
-"Latest research on oral probiotics for periodontitis"
-"PubMed search: P11-4 remineralization"
+"What does the evidence say about endocrowns?"
+"Give me the latest research on Lithium Disilicate"
 ```
 
 The skill auto-triggers, runs the search, writes summaries, and saves the PDF to `~/Downloads/`. Takes ~60–90 seconds.
@@ -114,7 +114,7 @@ The script needs outbound HTTPS to:
 
 If you get HTTP 403, you're behind a restrictive firewall or sandbox — works fine on any home/office network.
 
-## Limitations (be honest about these)
+## Limitations
 
 - **Closed-access papers** fall back to abstract-only summaries. If the paper isn't in PMC open access, the summary quality is bounded by the abstract.
 - **Citation counts lag Google Scholar** by weeks-to-months and undercount preprints. Europe PMC is more conservative but more reproducible.
