@@ -17,6 +17,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 from xml.sax.saxutils import escape as xml_escape
 
 from reportlab.lib import colors
@@ -39,8 +40,26 @@ from reportlab.platypus import (
 # and Greek letters (β, μ, α) that are ubiquitous in biomedical abstracts
 # render correctly. ReportLab's built-in Helvetica is WinAnsi-only and drops
 # most non-Latin characters to empty boxes.
-_FONT_DIR = Path(__file__).resolve().parent / "fonts"
+#
+# Fonts can live in one of two layouts next to build_pdf.py:
+#   - ./fonts/<file>.ttf  — repo layout (Claude skill install)
+#   - ./<file>.ttf        — flat layout (ChatGPT Custom GPT Knowledge upload,
+#                           where every uploaded file lands in /mnt/data/
+#                           side-by-side with no subdirectories)
+# We probe both, prefer the subfolder, fall back to Helvetica with a warning
+# if neither location yields the fonts.
+_FONT_DIR_PRIMARY = Path(__file__).resolve().parent / "fonts"
+_FONT_DIR_FALLBACK = Path(__file__).resolve().parent
 _FONT_REGISTERED = False
+
+
+def _find_font(filename: str) -> Optional[Path]:
+    """Return the first existing path for `filename` in either font layout."""
+    for d in (_FONT_DIR_PRIMARY, _FONT_DIR_FALLBACK):
+        p = d / filename
+        if p.exists():
+            return p
+    return None
 
 
 def _register_bundled_fonts() -> str:
@@ -53,10 +72,18 @@ def _register_bundled_fonts() -> str:
     if _FONT_REGISTERED:
         return "Body"
     try:
-        pdfmetrics.registerFont(TTFont("Body", str(_FONT_DIR / "DejaVuSans.ttf")))
-        pdfmetrics.registerFont(TTFont("Body-Bold", str(_FONT_DIR / "DejaVuSans-Bold.ttf")))
-        pdfmetrics.registerFont(TTFont("Body-Italic", str(_FONT_DIR / "DejaVuSans-Oblique.ttf")))
-        pdfmetrics.registerFont(TTFont("Body-BoldItalic", str(_FONT_DIR / "DejaVuSans-BoldOblique.ttf")))
+        for logical, filename in (
+            ("Body", "DejaVuSans.ttf"),
+            ("Body-Bold", "DejaVuSans-Bold.ttf"),
+            ("Body-Italic", "DejaVuSans-Oblique.ttf"),
+            ("Body-BoldItalic", "DejaVuSans-BoldOblique.ttf"),
+        ):
+            path = _find_font(filename)
+            if path is None:
+                raise FileNotFoundError(
+                    f"{filename} not found in {_FONT_DIR_PRIMARY} or {_FONT_DIR_FALLBACK}"
+                )
+            pdfmetrics.registerFont(TTFont(logical, str(path)))
         registerFontFamily("Body",
                            normal="Body", bold="Body-Bold",
                            italic="Body-Italic", boldItalic="Body-BoldItalic")
@@ -65,7 +92,8 @@ def _register_bundled_fonts() -> str:
     except Exception as e:
         print(f"[pdf] WARNING: bundled fonts not found ({e}); falling back to "
               "Helvetica. Non-ASCII characters may not render. Reinstall the "
-              "skill to restore the fonts/ directory.", file=sys.stderr)
+              "skill (or re-upload the DejaVu .ttf files to the Custom GPT's "
+              "Knowledge) to restore full Unicode support.", file=sys.stderr)
         return "Helvetica"
 
 
